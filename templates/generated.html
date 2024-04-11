@@ -1,0 +1,335 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Tables Data {% endblock %} 
+
+<!-- Element injected in the BODY element -->
+{% block body_class %} {% endblock body_class %} 
+
+<!-- Specific Page CSS goes HERE  -->
+{% block stylesheets %}
+
+<style>
+  .loading-spinner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px; /* Adjust size as needed */
+  height: 100px; /* Adjust size as needed */
+  border: 4px solid #f3f3f3; /* Light grey */
+  border-top: 4px solid #3498db; /* Blue */
+  border-radius: 50%;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+</style>
+  <!-- Google Font: Source Sans Pro -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
+  <!-- DataTables -->
+  <link rel="stylesheet" href="/static/assets/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
+  <link rel="stylesheet" href="/static/assets/plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
+  <!-- Theme style -->
+  <link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
+ 
+{% endblock stylesheets %}
+
+{% block content %} 
+
+  <!-- Content Wrapper. Contains page content -->
+  <div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    <section class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1>RAG Generated Questions and Answers</h1>
+          </div>
+          
+        
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="#">Home</a></li>
+              <li class="breadcrumb-item active">RAG Generated Q&A</li>
+            </ol>
+          </div>
+        </div>
+      </div><!-- /.container-fluid -->
+    </section>
+
+    <!-- Main content -->
+    <section class="content">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-12">
+            <div class="card">
+                <label for="collectionName">Select Event:</label>
+                <select class="form-select" id="exampleDropdown">
+                    {% for option in dropdown_options %}
+                        <option value="{{ option }}" {% if selected_option == option %} selected {% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+               
+                
+              <!-- /.card-header -->
+              <div class="card-body">
+                <div class="d-flex justify-content-end mb-3">
+                  <button type="button" class="btn btn-success" onclick="addRow()">Add Q&A</button>
+                </div>
+                <table id="example2" class="table table-bordered table-hover">
+                  <thead>
+                   
+
+                  <tr>
+                    <th>Question</th>
+                    <th>Answer</th>
+                    <th > Actions</th>
+                  </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in data %}
+                    <tr>
+                      <td>{{ row[1] }}</td>
+                      <td style="white-space: nowrap;">{{ row[2] }}</td>
+                      <td style="white-space: nowrap;"><button class="btn btn-outline-primary" onclick="editRow('{{row[0]}}', '{{ row[1] }}', '{{ row[2] }}')"><i class="fas fa-edit"></i></button>
+                    
+                      <button class="btn btn-outline-danger" onclick="deleteRow(this, '{{row[0]}}')"><i class="fas fa-trash"></i></button></td>
+                    </tr>
+                  {% endfor %}
+                  </tbody>
+                  <tfoot>
+                    <div>
+                      <button type="button" class="btn btn-primary" onclick="trainDb()">Retrain ChatBot with the genrated Q&A</button>
+                      
+                    </div>
+                  </tfoot>
+                </table>
+              </div>
+              <!-- /.card-body -->
+            </div>
+            <!-- /.card -->
+
+            <!-- /.card-body -->
+            </div>
+            <!-- /.card -->
+          </div>
+          <!-- /.col -->
+        </div>
+        <!-- /.row -->
+      </div>
+      <!-- /.container-fluid -->
+    </section>
+    <!-- /.content -->
+  </div>
+  <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editModalLabel">Edit Q&A</h5>
+          
+        </div>
+        <div class="modal-body">
+          <form id="editForm">
+            <div class="mb-3">
+              <label for="editQuestion" class="form-label">Question</label>
+              <input type="text" class="form-control" id="editQuestion">
+            </div>
+            <div class="mb-3">
+              <label for="editAnswer" class="form-label">Answer</label>
+              <textarea class="form-control" id="editAnswer" rows="3"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" onclick="saveChanges()">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addModalLabel">Add Q&A</h5>
+          
+        </div>
+        <div class="modal-body">
+          <form id="editForm">
+            <div class="mb-3">
+              <input type="hidden" id="selectedOption" name="selectedOption">
+              <label for="editQuestion" class="form-label">Question</label>
+              <input type="text" class="form-control" id="question">
+            </div>
+            <div class="mb-3">
+              <label for="editAnswer" class="form-label">Answer</label>
+              <textarea class="form-control" id="answer" rows="3"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" onclick="save()">Save </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+
+<!-- Specific Page JS goes HERE  -->
+{% block javascripts %}
+
+  <!-- jQuery -->
+  <script src="/static/assets/plugins/jquery/jquery.min.js"></script>
+  <!-- Bootstrap 4 -->
+  <script src="/static/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <!-- DataTables -->
+  <script src="/static/assets/plugins/datatables/jquery.dataTables.min.js"></script>
+  <script src="/static/assets/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
+  <script src="/static/assets/plugins/datatables-responsive/js/dataTables.responsive.min.js"></script>
+  <script src="/static/assets/plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
+  <!-- AdminLTE App -->
+  <script src="/static/assets/js/adminlte.min.js"></script>
+  <!-- AdminLTE for demo purposes -->
+  <script src="/static/assets/js/demo.js"></script>
+  <!-- page script -->
+  <script>
+    $(function () {
+      $("#example1").DataTable({
+        "responsive": true,
+        "autoWidth": false,
+      });
+      $('#example2').DataTable({
+        "paging": true,
+        "lengthChange": false,
+        "searching": true,
+        "ordering": true,
+        "info": true,
+        "autoWidth": false,
+        "responsive": true,
+      });
+    });
+    $(function () {
+  // Handle dropdown change event
+  $('#exampleDropdown').on('change', function() {
+    var selectedOption = $(this).val();
+    // Send selected option value to the server
+    $.ajax({
+      url: '/generatedQuestions',
+      type: 'POST',
+      data: {selected_option: selectedOption},
+      success: function(response) {
+        // Replace the HTML content of the page with the updated FAQ data
+        $('body').html(response);
+      },
+      error: function(error) {
+        console.error('Error:', error);
+      }
+    });
+  });
+});
+
+function editRow(rowId, question, answer) {
+    selectedRowId = rowId; // Store the ID of the selected row
+    $('#editQuestion').val(question); // Populate question input
+    $('#editAnswer').val(answer); // Populate answer textarea
+    $('#editModal').modal('show'); // Show the edit modal
+  }
+
+  function addRow() {
+  // Store the ID of the selected row
+  var selectedOption = $('#exampleDropdown').val();
+    $('#selectedOption').val(selectedOption); // Populate question input
+   // Populate answer textarea
+    $('#addModal').modal('show'); // Show the edit modal
+  }
+  function saveChanges() {
+    var editedQuestion = $('#editQuestion').val(); // Get edited question value
+    var editedAnswer = $('#editAnswer').val(); // Get edited answer value
+    alert(selectedRowId)
+    // Make an AJAX request to update the values on the server
+    $.ajax({
+      url: '/updateQA',
+      type: 'POST',
+      data: {
+        row_id: selectedRowId,
+        question: editedQuestion,
+        answer: editedAnswer
+      },
+      success: function(response) {
+        // If update is successful, update the table row with new values
+        $('#question_' + selectedRowId).text(editedQuestion);
+        $('#answer_' + selectedRowId).text(editedAnswer);
+        $('#editModal').modal('hide'); // Hide the edit modal
+        location.reload(true);
+      },
+      error: function(error) {
+        console.error('Error:', error);
+      }
+    });
+  }
+  function save() {
+    var question = $('#question').val(); // Get edited question value
+    var answer = $('#answer').val(); // Get edited answer value
+    var selectedOption=$('#selectedOption').val();
+    
+    // Make an AJAX request to update the values on the server
+    $.ajax({
+      url: '/saveQA',
+      type: 'POST',
+      data: {
+        selectedOption: selectedOption,
+        question: question,
+        answer: answer
+      },
+      success: function(response) {
+        // If update is successful, update the table row with new values
+        
+        $('#addModal').modal('hide'); // Hide the edit modal
+        location.reload(true);
+      },
+      error: function(error) {
+        console.error('Error:', error);
+      }
+    });
+  }
+  function trainDb() {
+    alert("reached here")
+    var selected_option = $('#exampleDropdown').val();
+    alert(selected_option)
+    // Make an AJAX request to update the values on the server
+    window.location.href = '/trainDb?selected_option=' + encodeURIComponent(selected_option)
+  }
+function deleteRow(button,row_id) {
+      var row = button.parentNode.parentNode;
+      alert(row_id)
+    //   row.parentNode.removeChild(row);
+    var result = confirm("Are you sure you want to delete this row?");
+    if (result) {
+        // Make an AJAX request to Flask to delete the row
+        fetch('/deleteQA', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: 'row_id=' + encodeURIComponent(row_id) ,
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            var row = button.parentNode.parentNode;
+            row.parentNode.removeChild(row);
+          }
+        })
+        .catch(error => console.error('Error:', error));
+      }
+    } 
+  </script>
+
+{% endblock javascripts %}

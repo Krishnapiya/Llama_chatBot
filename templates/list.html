@@ -1,0 +1,187 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} ChatBots {% endblock %} 
+
+<!-- Element injected in the BODY element -->
+{% block body_class %} {% endblock body_class %} 
+
+<!-- Specific Page CSS goes HERE  -->
+{% block stylesheets %}
+
+  <!-- Google Font: Source Sans Pro -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
+  <!-- DataTables -->
+  <link rel="stylesheet" href="/static/assets/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
+  <link rel="stylesheet" href="/static/assets/plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
+  <!-- Theme style -->
+  <link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
+
+{% endblock stylesheets %}
+{% block content %} 
+
+  <!-- Content Wrapper. Contains page content -->
+  <div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    <section class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1>List of ChatBots</h1>
+          </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="#">Home</a></li>
+              <li class="breadcrumb-item active">Events</li>
+            </ol>
+          </div>
+        </div>
+      </div><!-- /.container-fluid -->
+    </section>
+
+    <!-- Main content -->
+    <section class="content">
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-12">
+            <div class="card">
+              
+               
+                
+              <!-- /.card-header -->
+              <div class="card-body">
+               
+                <table id="example2" class="table table-bordered table-hover">
+                  <thead>
+                  <tr>
+                    <th>Event Name</th>
+                    <th>Collection Name</th>
+                    <th>Created Folder Path</th>
+                    <th>Chatbot URL</th>
+                    <th>Is Question Generated</th>
+                    <th>Actions</th>
+                  </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in data %}
+                    <tr>
+                      <td>{{ row[1] }}</td>
+                      <td>{{ row[2] }}</td>
+                      <td>{{ row[3] }}</td>
+                      <td><a href="{{ row[4] }}">{{ row[4] }}</a></td>
+                      <td>{{ row[5] }}</td>
+                      <td style="white-space: nowrap;"><button class="btn btn-outline-danger" onclick="deleteRow(this, '{{row[0]}}','{{row[2]}}')"><i class="fas fa-trash"></i></button>
+                      <!--<td><button onclick="editCollection('{{row[0]}}')">Edit</button></td>-->
+                      {% if row[5] == False %}
+                      <button onclick="generateQuestion('{{row[3]}}','{{row[2]}}')"><i class="fas fa-question-circle"></i></button></td>
+                      <span id="loadingSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                  {% else %}
+                      <button onclick="generateQuestion('{{row[3]}}','{{row[2]}}')" disabled><i class="fas fa-question-circle"></i></button></td>
+
+                  {% endif %}
+                    </tr>
+                  {% endfor %}
+                  </tbody>
+                  <tfoot>
+                  
+                  </tfoot>
+                </table>
+              </div>
+              <!-- /.card-body -->
+            </div>
+            <!-- /.card -->
+
+            <!-- /.card-body -->
+            </div>
+            <!-- /.card -->
+          </div>
+          <!-- /.col -->
+        </div>
+        <!-- /.row -->
+      </div>
+      <!-- /.container-fluid -->
+    </section>
+    <!-- /.content -->
+  </div>
+
+{% endblock content %}
+
+<!-- Specific Page JS goes HERE  -->
+{% block javascripts %}
+
+<script src="/static/assets/plugins/jquery/jquery.min.js"></script>
+<!-- Bootstrap 4 -->
+<script src="/static/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<!-- DataTables -->
+<script src="/static/assets/plugins/datatables/jquery.dataTables.min.js"></script>
+<script src="/static/assets/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
+<script src="/static/assets/plugins/datatables-responsive/js/dataTables.responsive.min.js"></script>
+<script src="/static/assets/plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
+<!-- AdminLTE App -->
+<script src="/static/assets/js/adminlte.min.js"></script>
+<!-- AdminLTE for demo purposes -->
+<script src="/static/assets/js/demo.js"></script>
+  <!-- page script -->
+  <script>
+    
+   
+     
+    $(function () {
+      $("#example1").DataTable({
+        "responsive": true,
+        "autoWidth": false,
+      });
+      $('#example2').DataTable({
+        "paging": true,
+        "lengthChange": false,
+        "searching": false,
+        "ordering": true,
+        "info": true,
+        "autoWidth": false,
+        "responsive": true,
+      });
+    });
+    function deleteRow(button,rowId,collectionName) {
+      var row = button.parentNode.parentNode;
+      alert(rowId)
+    //   row.parentNode.removeChild(row);
+    var result = confirm("Are you sure you want to delete this row?");
+    if (result) {
+        // Make an AJAX request to Flask to delete the row
+        fetch('/deleteCollection', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: 'row_id=' + encodeURIComponent(rowId)+ '&collection_name=' + encodeURIComponent(collectionName),
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            var row = button.parentNode.parentNode;
+            row.parentNode.removeChild(row);
+          }
+        })
+        .catch(error => console.error('Error:', error));
+      }
+    }
+    function editCollection(rowId, collectionName) {
+        window.location.href = '/editPage?row_id=' + encodeURIComponent(rowId);
+    }
+    function generateQuestion(folderPath,collection_name) {
+      var encodedCollectionName = encodeURIComponent(collection_name);
+      var loadingSpinner = document.getElementById("loadingSpinner");
+
+// Disable the button and show the loading spinner
+
+loadingSpinner.classList.remove("d-none");
+
+      alert(collection_name)
+      window.location.href = '/generate?folder_path=' + encodeURIComponent(folderPath)+ '&collection_name=' + encodedCollectionName;
+
+    }
+    
+  </script>
+
+{% endblock javascripts %}
